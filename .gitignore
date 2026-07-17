@@ -1,0 +1,10 @@
+.gdbinit.ci
+make
+GPATH
+GRTAGS
+GTAGS
+node_modules
+.vscode
+dist
+.DS_Store
+build
