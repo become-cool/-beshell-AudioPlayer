@@ -345,9 +345,10 @@ int MP3Decode(HMP3Decoder hMP3Decoder, unsigned char **inbuf, int *bytesLeft, vo
 	} else {
 		/* out of data - assume last or truncated frame */
 		if (mp3DecInfo->nSlots > *bytesLeft) {
-			printf("ERR_MP3_INDATA_UNDERFLOW: mp3DecInfo->nSlots (%d) > bytesLeft (%d) \n", mp3DecInfo->nSlots, *bytesLeft) ;
+			// 非致命：调用者会恢复指针、补充数据后重试，无需打印
+			// printf("ERR_MP3_INDATA_UNDERFLOW: mp3DecInfo->nSlots (%d) > bytesLeft (%d) \n", mp3DecInfo->nSlots, *bytesLeft) ;
 			// MP3ClearBadFrame(mp3DecInfo, outbuf);
-			return ERR_MP3_INDATA_UNDERFLOW;	
+			return ERR_MP3_INDATA_UNDERFLOW;
 		}
 		/* fill main data buffer with enough new data for this frame */
 		if (mp3DecInfo->mainDataBytes >= mp3DecInfo->mainDataBegin) {

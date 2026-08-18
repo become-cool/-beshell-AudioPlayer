@@ -50,6 +50,9 @@ namespace be::media {
         if(src) {
             audio_el_src_delete(src) ;
         }
+        if(raw) {
+            audio_el_raw_delete(raw) ;
+        }
         if(mp3) {
             audio_el_mp3_delete(mp3) ;
         }
@@ -58,6 +61,10 @@ namespace be::media {
         }
         if(playback) {
             audio_el_i2s_delete(playback) ;
+        }
+        if(!JS_IsUndefined(buffer_ref)) {
+            JS_FreeValue(ctx, buffer_ref) ;
+            buffer_ref = JS_UNDEFINED ;
         }
 
         // JS_FreeValue(pipe.ctx, pipe.jsobj) ;
@@ -73,11 +80,21 @@ namespace be::media {
     void AudioPlayer::onNativeEvent(JSContext *ctx, void * param) {
         std::pair<const char *, int> * event_data = (std::pair<const char *, int> *)param ;
         emitSync(event_data->first, {JS_NewInt32(ctx, event_data->second)}) ;
+        // 播放结束，释放 ArrayBuffer 引用
+        if(!strcmp(event_data->first, "stop") && !JS_IsUndefined(buffer_ref)) {
+            JS_FreeValue(ctx, buffer_ref) ;
+            buffer_ref = JS_UNDEFINED ;
+        }
     }
     
     void AudioPlayer::build_el_src(int core) {
         if(!src) {
             src = audio_el_src_create(&pipe, core) ;
+        }
+    }
+    void AudioPlayer::build_el_raw(int core) {
+        if(!raw) {
+            raw = audio_el_raw_create(&pipe, core) ;
         }
     }
     void AudioPlayer::build_el_mp3(int core) {
@@ -104,8 +121,7 @@ namespace be::media {
             JSTHROW("player is running")
         }
         ASSERT_ARGC(1)
-        string path = be::FS::toVFSPath(ctx, argv[0]) ;
-        player->build_el_src(1) ;
+
         player->build_el_mp3(1) ;
         player->build_el_i2s(1) ;
 
@@ -114,13 +130,39 @@ namespace be::media {
             sync = JS_ToBool(ctx, argv[1]);
         }
 
-        if(path.length()>=sizeof(player->src->src_path)) {
-            JSTHROW("path is too long")
+        // 数据源：ArrayBuffer 使用 raw element，否则为文件路径使用 src element
+        audio_el_t * source = NULL ;
+        if(JS_IsArrayBuffer(argv[0])) {
+            size_t ab_len = 0 ;
+            uint8_t * ab = JS_GetArrayBuffer(ctx, &ab_len, argv[0]) ;
+            if(!ab) {
+                return JS_EXCEPTION ;
+            }
+            // 跳过 mp3 开头的 ID3v2 标签（size 字段不含 10 字节头）
+            if(ab_len>=10 && !memcmp(ab, "ID3", 3)) {
+                size_t tag_len = ((ab[6]&0x7F)<<21)|((ab[7]&0x7F)<<14)|((ab[8]&0x7F)<<7)|(ab[9]&0x7F) ;
+                size_t skip = 10 + tag_len ;
+                if(skip < ab_len) {
+                    ab+= skip ;
+                    ab_len-= skip ;
+                }
+            }
+            player->build_el_raw(1) ;
+            audio_el_raw_set_input(player->raw, ab, ab_len) ;
+            source = (audio_el_t *)player->raw ;
         }
-        strcpy(player->src->src_path, path.c_str()) ;
+        else {
+            player->build_el_src(1) ;
+            string path = be::FS::toVFSPath(ctx, argv[0]) ;
+            if(path.length()>=sizeof(player->src->src_path)) {
+                JSTHROW("path is too long")
+            }
+            strcpy(player->src->src_path, path.c_str()) ;
 
-        if(!audio_el_src_open(player->src) || !audio_el_mp3_strip(player->src)) {
-            JSTHROW("file not exists") ;
+            if(!audio_el_src_open(player->src) || !audio_el_mp3_strip(player->src)) {
+                JSTHROW("file not exists") ;
+            }
+            source = (audio_el_t *)player->src ;
         }
 
         // 重置 hexli 状态
@@ -132,7 +174,7 @@ namespace be::media {
         // 清空管道
         audio_pipe_clear(&player->pipe) ;
 
-        audio_pipe_link( &player->pipe, 3, player->src, player->mp3, player->playback ) ;
+        audio_pipe_link( &player->pipe, 3, source, player->mp3, player->playback ) ;
 
         player->pipe.paused = false ;
         player->pipe.running = true ;
@@ -141,6 +183,14 @@ namespace be::media {
         // audio_pipe_emit_js(&player->pipe, "play", JS_UNDEFINED) ;
 
         player->pipe.need_expand = false ;
+
+        // 持有 ArrayBuffer 引用，防止播放期间被 GC
+        if(JS_IsArrayBuffer(argv[0])) {
+            if(!JS_IsUndefined(player->buffer_ref)) {
+                JS_FreeValue(ctx, player->buffer_ref) ;
+            }
+            player->buffer_ref = JS_DupValue(ctx, argv[0]) ;
+        }
 
         audio_pipe_set_stats(&player->pipe, STAT_RUNNING) ;
 
@@ -164,31 +214,54 @@ namespace be::media {
         ARGV_TO_UINT32_OPT(3, channels, 1)
         ARGV_TO_UINT32_OPT(4, ex, 0)
     
-        player->build_el_src(1) ;
         player->build_el_wav(1) ;
         player->build_el_i2s(1) ;
 
-        string path = be::FS::toVFSPath(ctx, argv[0]) ;
-        if(path.length()>=sizeof(player->src->src_path)) {
-            JSTHROW("path is too long")
+        // 数据源：ArrayBuffer 使用 raw element，否则为文件路径使用 src element
+        audio_el_t * source = NULL ;
+        if(JS_IsArrayBuffer(argv[0])) {
+            size_t ab_len = 0 ;
+            uint8_t * ab = JS_GetArrayBuffer(ctx, &ab_len, argv[0]) ;
+            if(!ab) {
+                return JS_EXCEPTION ;
+            }
+            player->build_el_raw(1) ;
+            audio_el_raw_set_input(player->raw, ab, ab_len) ;
+            source = (audio_el_t *)player->raw ;
         }
-        strcpy(player->src->src_path, path.c_str()) ;
+        else {
+            player->build_el_src(1) ;
+            string path = be::FS::toVFSPath(ctx, argv[0]) ;
+            if(path.length()>=sizeof(player->src->src_path)) {
+                JSTHROW("path is too long")
+            }
+            strcpy(player->src->src_path, path.c_str()) ;
 
-        // wav 头由 wav element 在数据流中解析，这里仅检查文件是否存在
-        if(!audio_el_src_open(player->src)) {
-            JSTHROW("file not exists") ;
+            // wav 头由 wav element 在数据流中解析，这里仅检查文件是否存在
+            if(!audio_el_src_open(player->src)) {
+                JSTHROW("file not exists") ;
+            }
+            source = (audio_el_t *)player->src ;
         }
 
         // 清空管道
         audio_pipe_clear(&player->pipe) ;
 
-        // src -> wav -> playback
-        audio_pipe_link( &player->pipe, 3, player->src, player->wav, player->playback ) ;
+        // src/raw -> wav -> playback
+        audio_pipe_link( &player->pipe, 3, source, player->wav, player->playback ) ;
 
         player->pipe.paused = false ;
         player->pipe.running = true ;
         player->pipe.finished = false ;
         player->pipe.error = 0 ;
+
+        // 持有 ArrayBuffer 引用，防止播放期间被 GC
+        if(JS_IsArrayBuffer(argv[0])) {
+            if(!JS_IsUndefined(player->buffer_ref)) {
+                JS_FreeValue(ctx, player->buffer_ref) ;
+            }
+            player->buffer_ref = JS_DupValue(ctx, argv[0]) ;
+        }
 
         audio_pipe_set_stats(&player->pipe, STAT_RUNNING) ;
 
@@ -206,17 +279,32 @@ namespace be::media {
         ARGV_TO_UINT32_OPT(2, bits, 16)
         ARGV_TO_UINT32_OPT(3, channels, 1)
 
-        player->build_el_src(1) ;
         player->build_el_i2s(1) ;
 
-        string path = be::FS::toVFSPath(ctx, argv[0]) ;
-        if(path.length()>=sizeof(player->src->src_path)) {
-            JSTHROW("path is too long")
+        // 数据源：ArrayBuffer 使用 raw element，否则为文件路径使用 src element
+        audio_el_t * source = NULL ;
+        if(JS_IsArrayBuffer(argv[0])) {
+            size_t ab_len = 0 ;
+            uint8_t * ab = JS_GetArrayBuffer(ctx, &ab_len, argv[0]) ;
+            if(!ab) {
+                return JS_EXCEPTION ;
+            }
+            player->build_el_raw(1) ;
+            audio_el_raw_set_input(player->raw, ab, ab_len) ;
+            source = (audio_el_t *)player->raw ;
         }
-        strcpy(player->src->src_path, path.c_str()) ;
+        else {
+            player->build_el_src(1) ;
+            string path = be::FS::toVFSPath(ctx, argv[0]) ;
+            if(path.length()>=sizeof(player->src->src_path)) {
+                JSTHROW("path is too long")
+            }
+            strcpy(player->src->src_path, path.c_str()) ;
 
-        if(!audio_el_src_open(player->src)) {
-            JSTHROW("file not exists") ;
+            if(!audio_el_src_open(player->src)) {
+                JSTHROW("file not exists") ;
+            }
+            source = (audio_el_t *)player->src ;
         }
 
         // 裸 PCM 无文件头，采样格式由参数指定
@@ -238,13 +326,21 @@ namespace be::media {
         // 清空管道
         audio_pipe_clear(&player->pipe) ;
 
-        // src -> playback
-        audio_pipe_link( &player->pipe, 2, player->src, player->playback ) ;
+        // src/raw -> playback
+        audio_pipe_link( &player->pipe, 2, source, player->playback ) ;
 
         player->pipe.paused = false ;
         player->pipe.running = true ;
         player->pipe.finished = false ;
         player->pipe.error = 0 ;
+
+        // 持有 ArrayBuffer 引用，防止播放期间被 GC
+        if(JS_IsArrayBuffer(argv[0])) {
+            if(!JS_IsUndefined(player->buffer_ref)) {
+                JS_FreeValue(ctx, player->buffer_ref) ;
+            }
+            player->buffer_ref = JS_DupValue(ctx, argv[0]) ;
+        }
 
         audio_pipe_set_stats(&player->pipe, STAT_RUNNING) ;
 

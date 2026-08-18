@@ -1,6 +1,6 @@
 #include "audio_pipeline.h"
 
-#define BUFF_SRC_SIZE       MAINBUF_SIZE/2
+#define BUFF_SRC_SIZE       MAINBUF_SIZE
 #define BUFF_SRC_MEMTYPE    MALLOC_CAP_DMA
 
 
@@ -18,7 +18,8 @@ bool audio_el_mp3_strip(audio_el_src_t * el) {
 
     if (memcmp(tag,"ID3",3) == 0)  {
         tag_len = ((tag[6] & 0x7F)<< 21)|((tag[7] & 0x7F) << 14) | ((tag[8] & 0x7F) << 7) | (tag[9] & 0x7F);
-        fseek(el->file, tag_len - 10, SEEK_SET);
+        // ID3v2 size 字段不含 10 字节头，音频数据从 10+tag_len 开始
+        fseek(el->file, tag_len + 10, SEEK_SET);
     }
     else  {
         fseek(el->file, 0, SEEK_SET);
@@ -137,9 +138,21 @@ static void task_mp3_decoder(audio_el_mp3_t * el) {
             psrc += offset;                         //data start point
             decode_left -= offset;                 //in buffer
 
+            // 备份指针：该 helix fork 在返回 ERR_MP3_INDATA_UNDERFLOW(-1) 前已消费了帧头+sideinfo
+            unsigned char * psrc_bak = psrc ;
+            int left_bak = decode_left ;
+
             necho_time("MP3Decode", {
             errs = MP3Decode(el->decoder, &psrc, &decode_left, el, 0);
             })
+
+            if(errs == ERR_MP3_INDATA_UNDERFLOW) {
+                // 数据不足一帧：恢复指针，等待接收更多数据后重试
+                psrc = psrc_bak ;
+                decode_left = left_bak ;
+                vTaskDelay(0) ;
+                continue ;
+            }
 
             if (errs < -1) {
                 printf("MP3Decode failed ,code is %d, receive: %d, left data: %d, sync: %d \n",errs, data_size, decode_left, offset);

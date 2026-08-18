@@ -79,6 +79,18 @@ typedef struct {
 } audio_el_src_t ;
 
 
+// 内存数据 source element
+typedef struct {
+
+    audio_el_t base ;
+
+    const uint8_t * input ;  // 外部输入数据（不持有所有权）
+    size_t input_len ;
+    size_t pos ;             // 已送入 ring buffer 的字节数
+
+} audio_el_raw_t ;
+
+
 // mp3 解码 element
 typedef struct {
 
@@ -255,6 +267,12 @@ void audio_el_src_delete(audio_el_src_t * el) ;
 audio_el_src_t *  audio_el_src_create(audio_pipe_t * pipe, uint8_t core) ;
 void task_src(audio_el_src_t * el) ;
 bool audio_el_src_open(audio_el_src_t * el) ;
+
+// memory buffer source
+audio_el_raw_t * audio_el_raw_create(audio_pipe_t * pipe, uint8_t core) ;
+void audio_el_raw_delete(audio_el_raw_t * el) ;
+void audio_el_raw_set_input(audio_el_raw_t * el, const void * data, size_t len) ;
+void task_raw(audio_el_raw_t * el) ;
 
 // mp3 decoder
 audio_el_mp3_t * audio_el_mp3_create(audio_pipe_t * pipe, uint8_t core) ;

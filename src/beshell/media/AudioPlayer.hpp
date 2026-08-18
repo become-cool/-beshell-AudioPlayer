@@ -13,13 +13,17 @@ namespace be::media {
         audio_pipe_t pipe ;
 
         audio_el_src_t * src = nullptr ;
+        audio_el_raw_t * raw = nullptr ;
         audio_el_mp3_t * mp3 = nullptr ;
         audio_el_wav_t * wav = nullptr ;
         audio_el_i2s_t * playback = nullptr ;
 
+        JSValue buffer_ref = JS_UNDEFINED ;  // 传入 ArrayBuffer 播放时持有引用，防止播放期间被 GC
+
         void build_el_mp3(int core) ;
         void build_el_wav(int core) ;
         void build_el_src(int core) ;
+        void build_el_raw(int core) ;
         void build_el_i2s(int core) ;
 
         static void pipeCallback(const char * event, int param, AudioPlayer * player) ;
