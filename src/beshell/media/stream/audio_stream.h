@@ -229,6 +229,7 @@ audio_el_src_t *  audio_el_src_create(audio_pipe_t * pipe, uint8_t core) ;
 void task_src(audio_el_src_t * el) ;
 bool audio_el_src_strip_pcm(audio_el_src_t * el) ;
 bool audio_el_src_strip_mp3(audio_el_src_t * el) ;
+bool audio_el_src_strip_raw(audio_el_src_t * el, uint32_t samprate, uint8_t bits, uint8_t channels) ;
 
 // mp3 decoder
 audio_el_mp3_t * audio_el_mp3_create(audio_pipe_t * pipe, uint8_t core) ;

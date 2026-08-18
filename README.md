@@ -72,7 +72,8 @@ player.playMP3("/mp3/music.mp3")
 | 方法 | 说明 |
 |------|------|
 | `playMP3(path, sync=false)` | 播放 MP3 文件，`sync=true` 时阻塞直到播放结束 |
-| `playWAV(path, sampleRate=16000, bits=16, channels=1)` | 播放 WAV/PCM 文件 |
+| `playWAV(path)` | 播放 WAV 文件（采样率/位宽/声道从文件头解析） |
+| `playPCM(path, sampleRate=16000, bits=16, channels=1)` | 播放裸 PCM 文件（无文件头，格式由参数指定） |
 | `pause()` | 暂停播放 |
 | `resume()` | 恢复播放 |
 | `stop(sync=false)` | 停止播放，`sync=true` 时阻塞直到停止完成 |

@@ -31,8 +31,8 @@ namespace be::media {
 
         ~AudioPlayer() ;
 
-        static JSValue playWAV2(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) ;
         static JSValue playWAV(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) ;
+        static JSValue playPCM(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) ;
         static JSValue playMP3(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) ;
         static JSValue pause(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) ;
         static JSValue resume(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) ;

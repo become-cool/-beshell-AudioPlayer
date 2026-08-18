@@ -8,6 +8,7 @@ namespace be::media {
     DEFINE_NCLASS_META(AudioPlayer, EventEmitter)
     std::vector<JSCFunctionListEntry> AudioPlayer::methods = {
         JS_CFUNC_DEF("playWAV", 0, AudioPlayer::playWAV),
+        JS_CFUNC_DEF("playPCM", 0, AudioPlayer::playPCM),
         JS_CFUNC_DEF("playMP3", 0, AudioPlayer::playMP3),
         JS_CFUNC_DEF("pause", 0, AudioPlayer::pause),
         JS_CFUNC_DEF("resume", 0, AudioPlayer::resume),
@@ -165,6 +166,46 @@ namespace be::media {
         strcpy(player->src->src_path, path.c_str()) ;
 
         if(!audio_el_src_strip_pcm(player->src)) {
+            JSTHROW("file not exists or not a wav file") ;
+        }
+
+        // 清空管道
+        audio_pipe_clear(&player->pipe) ;
+
+        // src -> playback
+        audio_pipe_link( &player->pipe, 2, player->src, player->playback ) ;
+
+        player->pipe.paused = false ;
+        player->pipe.running = true ;
+        player->pipe.finished = false ;
+        player->pipe.error = 0 ;
+
+        audio_pipe_set_stats(&player->pipe, STAT_RUNNING) ;
+
+        return JS_UNDEFINED ;
+    }
+
+    JSValue AudioPlayer::playPCM(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+
+        THIS_NCLASS(AudioPlayer, player)
+        if(player->pipe.running) {
+            JSTHROW("player is running")
+        }
+        CHECK_ARGC(1)
+        ARGV_TO_UINT32_OPT(1, samprate, 16000)
+        ARGV_TO_UINT32_OPT(2, bits, 16)
+        ARGV_TO_UINT32_OPT(3, channels, 1)
+
+        player->build_el_src(1) ;
+        player->build_el_i2s(1) ;
+
+        string path = be::FS::toVFSPath(ctx, argv[0]) ;
+        if(path.length()>=sizeof(player->src->src_path)) {
+            JSTHROW("path is too long")
+        }
+        strcpy(player->src->src_path, path.c_str()) ;
+
+        if(!audio_el_src_strip_raw(player->src, samprate, bits, channels)) {
             JSTHROW("file not exists") ;
         }
 
@@ -184,42 +225,6 @@ namespace be::media {
         return JS_UNDEFINED ;
     }
 
-    JSValue AudioPlayer::playWAV2(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-
-        THIS_NCLASS(AudioPlayer, player)
-        if(player->pipe.running) {
-            JSTHROW("player is running")
-        }
-        CHECK_ARGC(1)
-    
-        player->build_el_src(1) ;
-        player->build_el_i2s(1) ;
-
-        string path = be::FS::toVFSPath(ctx, argv[0]) ;
-        if(path.length()>=sizeof(player->src->src_path)) {
-            JSTHROW("path is too long")
-        }
-        strcpy(player->src->src_path, path.c_str()) ;
-
-        if(!audio_el_src_strip_pcm(player->src)) {
-            JSTHROW("file not exists or not a wav file") ;
-        }
-
-        // 清空管道
-        audio_pipe_clear(&player->pipe) ;
-
-        // src -> playback
-        audio_pipe_link( &player->pipe, 2, player->src, player->playback ) ;
-
-        player->pipe.paused = false ;
-        player->pipe.running = true ;
-        player->pipe.finished = false ;
-        player->pipe.error = 0 ;
-
-        audio_pipe_set_stats(&player->pipe, STAT_RUNNING) ;
-
-        return JS_UNDEFINED ;
-    }
     JSValue AudioPlayer::pause(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
         
         THIS_NCLASS(AudioPlayer, player)

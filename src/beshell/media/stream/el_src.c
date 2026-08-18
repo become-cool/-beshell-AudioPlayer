@@ -43,6 +43,43 @@ bool audio_el_src_strip_mp3(audio_el_src_t * el) {
 }
 
 
+// 裸 PCM 文件：无文件头，采样格式由参数指定
+bool audio_el_src_strip_raw(audio_el_src_t * el, uint32_t samprate, uint8_t bits, uint8_t channels) {
+
+    if(el->file){
+        fclose(el->file) ;
+        el->file = NULL ;
+    }
+    el->file = fopen(el->src_path,"rb") ;
+    if(!el->file) {
+        printf("can not open file: %s", el->src_path) ;
+        return false ;
+    }
+
+    uint8_t ch = channels ;
+    if(bits==16 && ch==1) {
+        ch = 2 ;
+        ((audio_pipe_t *)el->base.pipe)->need_expand = true ;
+    }
+    else {
+        ((audio_pipe_t *)el->base.pipe)->need_expand = false ;
+    }
+
+    audio_pipe_i2s_set_clk((audio_pipe_t *)el->base.pipe,
+        samprate,
+        bits ,
+        ch
+    );
+
+    audio_pipe_i2s_stop((audio_pipe_t *)el->base.pipe) ;
+    audio_pipe_i2s_clear((audio_pipe_t *)el->base.pipe) ;
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+    audio_pipe_i2s_start((audio_pipe_t *)el->base.pipe) ;
+
+    return true ;
+}
+
+
 struct WavHeader {
     char riffHeader[4];    // "RIFF"
     uint32_t fileSize;     // 文件大小
