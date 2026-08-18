@@ -4,6 +4,30 @@
 #define BUFF_SRC_MEMTYPE    MALLOC_CAP_DMA
 
 
+// 跳过 mp3 文件开头的 ID3 标签（在 audio_el_src_open() 之后调用）
+bool audio_el_mp3_strip(audio_el_src_t * el) {
+
+    char tag[10];
+    int tag_len = 0;
+    int read_bytes = fread(tag, 1, 10, el->file);
+
+    if(read_bytes != 10) {
+        printf("mp3 file length invalid (%d)\n",read_bytes) ; // @TODO: post js event
+        return false ;
+    }
+
+    if (memcmp(tag,"ID3",3) == 0)  {
+        tag_len = ((tag[6] & 0x7F)<< 21)|((tag[7] & 0x7F) << 14) | ((tag[8] & 0x7F) << 7) | (tag[9] & 0x7F);
+        fseek(el->file, tag_len - 10, SEEK_SET);
+    }
+    else  {
+        fseek(el->file, 0, SEEK_SET);
+    }
+
+    return true ;
+}
+
+
 static void mp3dec_output(audio_el_mp3_t * el, uint8_t * data, size_t size) {
 
     if( !el->i2s_clk_inited ) {

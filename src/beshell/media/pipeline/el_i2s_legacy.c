@@ -31,7 +31,7 @@ void audio_el_i2s_set_volume(audio_el_i2s_t * el, uint8_t volume) {
     if(volume>100) {
         volume = 100 ;
     }
-    el->volume = volume/100 ;
+    el->volume = volume/100.0f ;
     el->use_volume = volume!=100 ;
 }
 
@@ -109,14 +109,14 @@ static void task_pcm_playback(audio_el_i2s_t * el) {
 
             data_wroten = 0 ;
 
-            // printf("volume: %0.4f\n", el->volume) ;
-            // if(el->use_volume) {
-            //     int32_t* samples = (int32_t*)pwrite;
-            //     size_t sample_count = data_size / sizeof(int32_t);
-            //     for (size_t i = 0; i < sample_count; i++) {
-            //         samples[i] = (int32_t)(samples[i] * el->volume);
-            //     }
-            // }
+            // 软件音量调节（16bit PCM 就地缩放，写入后 pwrite 前移，每个采样只缩放一次）
+            if(el->use_volume) {
+                int16_t * samples = (int16_t*)pwrite ;
+                size_t sample_count = data_size / sizeof(int16_t) ;
+                for (size_t i = 0; i < sample_count; i++) {
+                    samples[i] = (int16_t)(samples[i] * el->volume) ;
+                }
+            }
 
             nechof_time("delay:%lld,%d->%d", {
                 if(((audio_pipe_t*)el->base.pipe)->need_expand) {

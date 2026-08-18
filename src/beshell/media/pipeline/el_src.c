@@ -10,7 +10,9 @@ audio_el_src_t *  audio_el_src_create(audio_pipe_t * pipe, uint8_t core) {
     return el ;
 }
 
-bool audio_el_src_strip_mp3(audio_el_src_t * el) {
+
+// 打开源文件（不做任何格式解析）
+bool audio_el_src_open(audio_el_src_t * el) {
 
     if(el->file){
         fclose(el->file) ;
@@ -20,166 +22,9 @@ bool audio_el_src_strip_mp3(audio_el_src_t * el) {
     if(!el->file) {
         printf("can not open file: %s", el->src_path) ;
         return false ;
-    }
-
-    char tag[10];
-    int tag_len = 0;
-    int read_bytes = fread(tag, 1, 10, el->file);
-
-    if(read_bytes != 10) {
-        printf("mp3 file length invalid (%d)\n",read_bytes) ; // @TODO: post js event
-        return false ;
-    }
-    
-    if (memcmp(tag,"ID3",3) == 0)  {
-        tag_len = ((tag[6] & 0x7F)<< 21)|((tag[7] & 0x7F) << 14) | ((tag[8] & 0x7F) << 7) | (tag[9] & 0x7F);
-        fseek(el->file, tag_len - 10, SEEK_SET);
-    }
-    else  {
-        fseek(el->file, 0, SEEK_SET);
     }
 
     return true ;
-}
-
-
-// 裸 PCM 文件：无文件头，采样格式由参数指定
-bool audio_el_src_strip_raw(audio_el_src_t * el, uint32_t samprate, uint8_t bits, uint8_t channels) {
-
-    if(el->file){
-        fclose(el->file) ;
-        el->file = NULL ;
-    }
-    el->file = fopen(el->src_path,"rb") ;
-    if(!el->file) {
-        printf("can not open file: %s", el->src_path) ;
-        return false ;
-    }
-
-    uint8_t ch = channels ;
-    if(bits==16 && ch==1) {
-        ch = 2 ;
-        ((audio_pipe_t *)el->base.pipe)->need_expand = true ;
-    }
-    else {
-        ((audio_pipe_t *)el->base.pipe)->need_expand = false ;
-    }
-
-    audio_pipe_i2s_set_clk((audio_pipe_t *)el->base.pipe,
-        samprate,
-        bits ,
-        ch
-    );
-
-    audio_pipe_i2s_stop((audio_pipe_t *)el->base.pipe) ;
-    audio_pipe_i2s_clear((audio_pipe_t *)el->base.pipe) ;
-    vTaskDelay(100 / portTICK_PERIOD_MS);
-    audio_pipe_i2s_start((audio_pipe_t *)el->base.pipe) ;
-
-    return true ;
-}
-
-
-struct WavHeader {
-    char riffHeader[4];    // "RIFF"
-    uint32_t fileSize;     // 文件大小
-    char waveHeader[4];    // "WAVE"
-    char fmtHeader[4];     // "fmt "
-    uint32_t fmtChunkSize; // 格式块大小（通常为 16）
-    uint16_t audioFormat;  // 音频格式（1 = PCM）
-    uint16_t numChannels;  // 通道数
-    uint32_t sampleRate;   // 采样率
-    uint32_t byteRate;     // 每秒字节数
-    uint16_t blockAlign;   // 块对齐
-    uint16_t bitsPerSample;// 每个样本的位数
-};
-
-bool audio_el_src_strip_pcm(audio_el_src_t * el) {
-
-    if(el->file){
-        fclose(el->file) ;
-        el->file = NULL ;
-    }
-    el->file = fopen(el->src_path,"rb") ;
-    if(!el->file) {
-        printf("can not open file: %s", el->src_path) ;
-        return false ;
-    }
-
-    struct WavHeader header ;
-
-    // 读取 WAV 文件头
-    if (fread(&header, sizeof(struct WavHeader), 1, el->file) != 1) {
-        printf("read wav header faild.") ;
-        fclose(el->file);
-        return false;
-    }
-
-    // 检查 RIFF 和 WAVE 标识是否合法
-    if (strncmp(header.riffHeader, "RIFF", 4) != 0 || strncmp(header.waveHeader, "WAVE", 4) != 0) {
-        printf("invalid wav file.") ;
-        fclose(el->file);
-        el->file = NULL ;
-        return false ;
-    }
-
-    // dn3(
-    //     header.sampleRate,
-    //     header.bitsPerSample,
-    //     header.numChannels
-    // )
-
-    uint8_t bps = header.bitsPerSample ;
-    uint8_t ch = header.numChannels ;
-
-    if(bps==16 && ch==1) {
-        ch = 2 ;
-        // bps = 32 ;
-        ((audio_pipe_t *)el->base.pipe)->need_expand = true ;
-    }
-    else {
-        ((audio_pipe_t *)el->base.pipe)->need_expand = false ;
-    }
-
-    audio_pipe_i2s_set_clk((audio_pipe_t *)el->base.pipe,
-        header.sampleRate,
-        bps ,
-        ch
-    );
-
-    audio_pipe_i2s_stop((audio_pipe_t *)el->base.pipe) ;
-    audio_pipe_i2s_clear((audio_pipe_t *)el->base.pipe) ;
-    vTaskDelay(100 / portTICK_PERIOD_MS);
-    audio_pipe_i2s_start((audio_pipe_t *)el->base.pipe) ;
-
-    // 查找 'data' 块
-    char chunkId[4];
-    uint32_t chunkSize;
-    int offset = sizeof(struct WavHeader);  // 初始偏移量为 WavHeader 的大小
-
-    // 循环读取每个块，直到找到 'data' 块
-    while (fread(chunkId, 4, 1, el->file) == 1) {
-        if (fread(&chunkSize, sizeof(chunkSize), 1, el->file) != 1) {
-            printf("read chunkSize faild.") ;
-            fclose(el->file);
-            el->file = NULL ;
-            return false ;
-        }
-
-        if (strncmp(chunkId, "data", 4) == 0) {
-            // 'data' 标记(4 字节) + 块大小(4 字节) = 8 字节
-            fseek(el->file, offset + 8, SEEK_SET);
-            // dn(offset + 8)
-            return true ;
-        } else {
-            // 跳过非 'data' 块
-            // dn(chunkSize)
-            fseek(el->file, chunkSize, SEEK_CUR);
-            offset += 8 + chunkSize;  // 8 字节为 chunkId 和 chunkSize 的大小
-        }
-    }
-
-    return false ;
 }
 
 

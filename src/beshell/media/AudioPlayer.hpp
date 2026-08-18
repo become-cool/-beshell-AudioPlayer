@@ -14,9 +14,11 @@ namespace be::media {
 
         audio_el_src_t * src = nullptr ;
         audio_el_mp3_t * mp3 = nullptr ;
+        audio_el_wav_t * wav = nullptr ;
         audio_el_i2s_t * playback = nullptr ;
 
         void build_el_mp3(int core) ;
+        void build_el_wav(int core) ;
         void build_el_src(int core) ;
         void build_el_i2s(int core) ;
 

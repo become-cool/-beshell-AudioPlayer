@@ -53,6 +53,9 @@ namespace be::media {
         if(mp3) {
             audio_el_mp3_delete(mp3) ;
         }
+        if(wav) {
+            audio_el_wav_delete(wav) ;
+        }
         if(playback) {
             audio_el_i2s_delete(playback) ;
         }
@@ -80,6 +83,11 @@ namespace be::media {
     void AudioPlayer::build_el_mp3(int core) {
         if(!mp3) {
             mp3 = audio_el_mp3_create(&pipe,core) ;
+        }
+    }
+    void AudioPlayer::build_el_wav(int core) {
+        if(!wav) {
+            wav = audio_el_wav_create(&pipe,core) ;
         }
     }
     void AudioPlayer::build_el_i2s(int core) {
@@ -111,7 +119,7 @@ namespace be::media {
         }
         strcpy(player->src->src_path, path.c_str()) ;
 
-        if(!audio_el_src_strip_mp3(player->src)) {
+        if(!audio_el_src_open(player->src) || !audio_el_mp3_strip(player->src)) {
             JSTHROW("file not exists") ;
         }
 
@@ -157,6 +165,7 @@ namespace be::media {
         ARGV_TO_UINT32_OPT(4, ex, 0)
     
         player->build_el_src(1) ;
+        player->build_el_wav(1) ;
         player->build_el_i2s(1) ;
 
         string path = be::FS::toVFSPath(ctx, argv[0]) ;
@@ -165,15 +174,16 @@ namespace be::media {
         }
         strcpy(player->src->src_path, path.c_str()) ;
 
-        if(!audio_el_src_strip_pcm(player->src)) {
-            JSTHROW("file not exists or not a wav file") ;
+        // wav 头由 wav element 在数据流中解析，这里仅检查文件是否存在
+        if(!audio_el_src_open(player->src)) {
+            JSTHROW("file not exists") ;
         }
 
         // 清空管道
         audio_pipe_clear(&player->pipe) ;
 
-        // src -> playback
-        audio_pipe_link( &player->pipe, 2, player->src, player->playback ) ;
+        // src -> wav -> playback
+        audio_pipe_link( &player->pipe, 3, player->src, player->wav, player->playback ) ;
 
         player->pipe.paused = false ;
         player->pipe.running = true ;
@@ -205,9 +215,25 @@ namespace be::media {
         }
         strcpy(player->src->src_path, path.c_str()) ;
 
-        if(!audio_el_src_strip_raw(player->src, samprate, bits, channels)) {
+        if(!audio_el_src_open(player->src)) {
             JSTHROW("file not exists") ;
         }
+
+        // 裸 PCM 无文件头，采样格式由参数指定
+        uint8_t ch = channels ;
+        if(bits==16 && ch==1) {
+            ch = 2 ;
+            player->pipe.need_expand = true ;
+        }
+        else {
+            player->pipe.need_expand = false ;
+        }
+
+        audio_pipe_i2s_set_clk(&player->pipe, samprate, bits, ch) ;
+        audio_pipe_i2s_stop(&player->pipe) ;
+        audio_pipe_i2s_clear(&player->pipe) ;
+        vTaskDelay(100 / portTICK_PERIOD_MS) ;
+        audio_pipe_i2s_start(&player->pipe) ;
 
         // 清空管道
         audio_pipe_clear(&player->pipe) ;

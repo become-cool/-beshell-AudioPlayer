@@ -93,6 +93,33 @@ typedef struct {
 
 } audio_el_mp3_t ;
 
+// wav 文件头
+struct WavHeader {
+    char riffHeader[4];    // "RIFF"
+    uint32_t fileSize;     // 文件大小
+    char waveHeader[4];    // "WAVE"
+    char fmtHeader[4];     // "fmt "
+    uint32_t fmtChunkSize; // 格式块大小（通常为 16）
+    uint16_t audioFormat;  // 音频格式（1 = PCM）
+    uint16_t numChannels;  // 通道数
+    uint32_t sampleRate;   // 采样率
+    uint32_t byteRate;     // 每秒字节数
+    uint16_t blockAlign;   // 块对齐
+    uint16_t bitsPerSample;// 每个样本的位数
+};
+
+// wav 解析 element
+typedef struct {
+    audio_el_t base ;
+
+    uint8_t phase ;         // 0=读取文件头, 1=查找 data 块, 2=透传 PCM, 3=出错丢弃
+    uint8_t hbuf[sizeof(struct WavHeader)] ;  // 文件头累积缓冲
+    size_t hlen ;
+    uint8_t cbuf[8] ;       // chunk 头累积缓冲 (id+size)
+    size_t clen ;
+    uint32_t skip ;         // 当前 chunk 剩余需跳过的字节数
+} audio_el_wav_t ;
+
 // i2s 播放 element
 typedef struct {
     audio_el_t base ;
@@ -227,14 +254,17 @@ void audio_el_stop_when_req(audio_el_t * el) ;
 void audio_el_src_delete(audio_el_src_t * el) ;
 audio_el_src_t *  audio_el_src_create(audio_pipe_t * pipe, uint8_t core) ;
 void task_src(audio_el_src_t * el) ;
-bool audio_el_src_strip_pcm(audio_el_src_t * el) ;
-bool audio_el_src_strip_mp3(audio_el_src_t * el) ;
-bool audio_el_src_strip_raw(audio_el_src_t * el, uint32_t samprate, uint8_t bits, uint8_t channels) ;
+bool audio_el_src_open(audio_el_src_t * el) ;
 
 // mp3 decoder
 audio_el_mp3_t * audio_el_mp3_create(audio_pipe_t * pipe, uint8_t core) ;
 void audio_el_mp3_delete(audio_el_mp3_t * el) ;
 void audio_el_mp3_reset(audio_el_mp3_t * el) ;
+bool audio_el_mp3_strip(audio_el_src_t * el) ;
+
+// wav parser
+audio_el_wav_t * audio_el_wav_create(audio_pipe_t * pipe, uint8_t core) ;
+void audio_el_wav_delete(audio_el_wav_t * el) ;
 
 // i2s playback
 audio_el_i2s_t * audio_el_i2s_create(audio_pipe_t * pipe, uint8_t core) ;
