@@ -2,10 +2,6 @@
 #include "audio_stream.h"
 #include <beshell/qjs_utils.h>
 
-#ifdef ESP_PLATFORM
-#include "driver/i2s.h"
-#endif
-
 audio_player_midi_t * audio_player_midi_create(audio_player_midi_conf_t * config)  {
     audio_player_midi_t * player = mallocDMA(sizeof(audio_player_midi_t)) ;
     if(!player) {

@@ -38,6 +38,15 @@ dependencies:
 
 然后重新编译项目，idf 构建工具会自动下载 beshell 和 beshell-AudioPlayer 存放到 `managed_components`
 
+## I2S 驱动切换
+
+组件根据 Kconfig 选项 `BESHELL_SERIAL_I2S_USE_LEGACY`（menuconfig → BeShell Configuration → Serial Module）选择 I2S 驱动实现，需与 beshell 的 serial 模块保持一致：
+
+* 关闭（默认）：使用 ESP-IDF 新版 I2S 驱动（`driver/i2s_std.h`），播放前需先通过 `serial.i2sX.setup()` 创建 I2S 通道
+* 开启：使用旧版 I2S 驱动（`driver/i2s.h`）
+
+两种实现分别位于 `src/beshell/media/stream/el_i2s.c` 和 `el_i2s_legacy.c`，对外 API 不变。
+
 ## JS API
 
 模块名为 `audio`，导出 `AudioPlayer` 类：
@@ -45,7 +54,9 @@ dependencies:
 ```js
 import { AudioPlayer } from "audio"
 
-const player = new AudioPlayer()
+// 参数为 I2S 端口号，默认 0（i2s0）；超出芯片实际 I2S 数量会抛出异常
+// ESP32/S3/P4 可选 0/1，S2/C3/C6/H2 只有 0
+const player = new AudioPlayer(0)
 player.setVolume(80)
 
 // 播放结束（或被停止）时触发

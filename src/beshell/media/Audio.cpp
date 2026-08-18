@@ -2,7 +2,7 @@
 #include "AudioPlayer.hpp"
 
 
-namespace be::media{
+namespace be::media {
 
     char const * const Audio::name = "audio" ;
 

@@ -1,5 +1,4 @@
 #include "audio_stream.h"
-#include "driver/i2s.h"
 #include <stdbool.h>
 #include <string.h>
 
@@ -94,7 +93,7 @@ bool audio_el_src_strip_pcm(audio_el_src_t * el) {
     // )
 
     uint8_t bps = header.bitsPerSample ;
-    i2s_channel_t ch = (i2s_channel_t)header.numChannels ;
+    uint8_t ch = header.numChannels ;
 
     if(bps==16 && ch==1) {
         ch = 2 ;
@@ -105,16 +104,16 @@ bool audio_el_src_strip_pcm(audio_el_src_t * el) {
         ((audio_pipe_t *)el->base.pipe)->need_expand = false ;
     }
 
-    i2s_set_clk(((audio_pipe_t *)el->base.pipe)->i2s,
+    audio_pipe_i2s_set_clk((audio_pipe_t *)el->base.pipe,
         header.sampleRate,
         bps ,
         ch
     );
-    
-    i2s_stop(((audio_pipe_t *)el->base.pipe)->i2s) ;
-    i2s_zero_dma_buffer(((audio_pipe_t *)el->base.pipe)->i2s) ;
-    vTaskDelay(100 / portTICK_PERIOD_MS); 
-    i2s_start(((audio_pipe_t *)el->base.pipe)->i2s) ;
+
+    audio_pipe_i2s_stop((audio_pipe_t *)el->base.pipe) ;
+    audio_pipe_i2s_clear((audio_pipe_t *)el->base.pipe) ;
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+    audio_pipe_i2s_start((audio_pipe_t *)el->base.pipe) ;
 
     // 查找 'data' 块
     char chunkId[4];

@@ -1,12 +1,11 @@
 #include "audio_stream.h"
 #include "midi_keys.h"
-#include "driver/i2s.h"
 
 
 // 键盘读取任务线程
 static void task_func_render(audio_el_midi_render_t * el) {
 
-    i2s_set_clk(0, 44100, 16, 1);
+    audio_pipe_i2s_set_clk((audio_pipe_t *)el->base.pipe, 44100, 16, 1) ;
 
 	float outputSamples[TSF_RENDER_SHORTBUFFERBLOCK] ;
     short outputBuff[TSF_RENDER_SHORTBUFFERBLOCK] ;

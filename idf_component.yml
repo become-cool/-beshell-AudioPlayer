@@ -16,5 +16,5 @@ repository: "https://github.com/become-cool/-beshell-AudioPlayer.git"
 license: "LGPL"
 dependencies:
   "become-cool/beshell":
-    version: ">=1.0.17"
+    version: ">=1.0.21"
 

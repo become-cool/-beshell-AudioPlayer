@@ -1,6 +1,6 @@
 #include "AudioPlayer.hpp"
-#include "driver/i2s_types.h"
 #include <beshell/fs/FS.hpp>
+#include "soc/soc_caps.h"
 
 using namespace std ;
 
@@ -19,20 +19,29 @@ namespace be::media {
     } ;
 
 
-    AudioPlayer::AudioPlayer(JSContext * ctx)
+    AudioPlayer::AudioPlayer(JSContext * ctx, i2s_port_t i2s_num)
         : EventEmitter(ctx,build(ctx))
     {
 
         memset((void*)&pipe, 0, sizeof(audio_pipe_t)) ;
 
-        pipe.i2s = (i2s_port_t)0 ;
+        pipe.i2s = i2s_num ;
         pipe.callback = (audio_pipe_event_callback_t) pipeCallback ;
         pipe.callback_opaque = this ;
 
         enableNativeEvent(ctx, sizeof(std::pair<const char *, int>)) ;
     }
     JSValue AudioPlayer::constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
-        auto obj = new AudioPlayer(ctx) ;
+        uint32_t i2s_num = 0 ;
+        if(argc>0) {
+            if(JS_ToUint32(ctx, &i2s_num, argv[0])) {
+                JSTHROW("i2s number must be a uint32")
+            }
+            if(i2s_num >= SOC_I2S_NUM) {
+                JSTHROW("invalid i2s number: %d (this chip has %d i2s)", i2s_num, SOC_I2S_NUM)
+            }
+        }
+        auto obj = new AudioPlayer(ctx, (i2s_port_t)i2s_num) ;
         obj->self = std::shared_ptr<AudioPlayer> (obj) ;
         return obj->jsobj ;
     }

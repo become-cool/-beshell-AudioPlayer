@@ -1,0 +1,3 @@
+dependencies:
+  become-cool/beshell: '>=1.0.19'
+  become-cool/beshell-AudioPlayer: '>=1.0.0'

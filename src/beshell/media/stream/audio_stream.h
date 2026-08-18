@@ -17,7 +17,12 @@ extern "C" {
 #include "freertos/event_groups.h"
 #include "freertos/ringbuf.h"
 #include "driver/spi_master.h"
+#include "sdkconfig.h"
+#if CONFIG_BESHELL_SERIAL_I2S_USE_LEGACY
 #include "driver/i2s.h"
+#else
+#include "driver/i2s_std.h"
+#endif
 #include "esp_log.h"
 #include <beshell/psram.h>
 #include <sys/stat.h>
@@ -161,6 +166,7 @@ typedef struct _audio_pipe {
 
     int samplerate ;
     bool need_expand ;  // 有的芯片不支持 16bit 音源，需要扩展到 32bit 输出到 i2s, 例如 ES8156
+    bool i2s_stopped ;  // ng 驱动下记录 i2s 通道是否已 disable（避免重复 enable/disable 报错）
 
     audio_el_t * first ;
     audio_el_t * last ;
@@ -233,6 +239,12 @@ void audio_el_mp3_reset(audio_el_mp3_t * el) ;
 audio_el_i2s_t * audio_el_i2s_create(audio_pipe_t * pipe, uint8_t core) ;
 void audio_el_i2s_set_volume(audio_el_i2s_t * el, uint8_t volume) ;
 void audio_el_i2s_delete(audio_el_i2s_t * el) ;
+
+// i2s 输出控制（legacy / ng 两种驱动各自实现，分别位于 el_i2s_legacy.c / el_i2s.c）
+void audio_pipe_i2s_set_clk(audio_pipe_t * pipe, uint32_t rate, uint8_t bits, uint8_t channels) ;
+void audio_pipe_i2s_stop(audio_pipe_t * pipe) ;
+void audio_pipe_i2s_start(audio_pipe_t * pipe) ;
+void audio_pipe_i2s_clear(audio_pipe_t * pipe) ;   // 清空 DMA 缓冲区（填充静音）
 
 // midi message
 audio_el_midi_msg_t * audio_el_midi_msg_create(audio_pipe_t * pipe, tsf* sf, audio_player_midi_conf_t * config) ;

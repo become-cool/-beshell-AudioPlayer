@@ -1,5 +1,4 @@
 #include "audio_stream.h"
-#include "driver/i2s_types_legacy.h"
 
 #define BUFF_SRC_SIZE       MAINBUF_SIZE/2
 #define BUFF_SRC_MEMTYPE    MALLOC_CAP_DMA
@@ -15,12 +14,11 @@ static void mp3dec_output(audio_el_mp3_t * el, uint8_t * data, size_t size) {
         int bps = ((audio_pipe_t*)el->base.pipe)->need_expand? 32: 16 ;
 
         // dn3(el->decoder->samprate,bps,el->decoder->nChans)
-        i2s_set_clk(
-            ((audio_pipe_t*)el->base.pipe)->i2s
+        audio_pipe_i2s_set_clk(
+            (audio_pipe_t*)el->base.pipe
             , el->decoder->samprate
             , bps
             , el->decoder->nChans
-            // , (i2s_channel_t)2
         );
 
         el->samprate = el->decoder->samprate ;

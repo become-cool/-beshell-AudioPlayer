@@ -1,6 +1,5 @@
 #include "audio_stream.h"
 #include "midi_keys.h"
-#include "driver/i2s.h"
 #include "driver/gpio.h"
 
 

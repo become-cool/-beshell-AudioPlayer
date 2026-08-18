@@ -26,7 +26,7 @@ namespace be::media {
         void onNativeEvent(JSContext *ctx, void * param) ;
 
     public:
-        AudioPlayer(JSContext * ctx) ;
+        AudioPlayer(JSContext * ctx, i2s_port_t i2s_num=I2S_NUM_0) ;
         static JSValue constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) ;
 
         ~AudioPlayer() ;
