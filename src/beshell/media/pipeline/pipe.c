@@ -1,4 +1,4 @@
-#include "audio_stream.h"
+#include "audio_pipeline.h"
 #include <beshell/qjs_utils.h>
 
 void audio_pipe_set_stats(audio_pipe_t * pipe, int stats) {

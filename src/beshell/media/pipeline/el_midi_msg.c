@@ -1,4 +1,4 @@
-#include "audio_stream.h"
+#include "audio_pipeline.h"
 #include "esp_timer.h"
 
 #define IsPress(msg) (msg->type==TML_NOTE_ON && msg->velocity!=0)

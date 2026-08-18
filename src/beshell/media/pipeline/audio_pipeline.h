@@ -1,5 +1,5 @@
-#ifndef ONCE_H_AUDIO_STREAM
-#define ONCE_H_AUDIO_STREAM
+#ifndef ONCE_H_AUDIO_PIPELINE
+#define ONCE_H_AUDIO_PIPELINE
 
 #ifdef __cplusplus
 extern "C" {

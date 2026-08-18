@@ -1,7 +1,7 @@
 #pragma once
 
 #include <beshell/EventEmitter.hpp>
-#include "stream/audio_stream.h"
+#include "pipeline/audio_pipeline.h"
 
 namespace be::media {
     class AudioPlayer: public be::EventEmitter {

@@ -1,4 +1,4 @@
-#include "audio_stream.h"
+#include "audio_pipeline.h"
 #include "midi_keys.h"
 #include "driver/gpio.h"
 

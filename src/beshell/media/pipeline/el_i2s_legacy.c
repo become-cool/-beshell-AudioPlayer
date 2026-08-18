@@ -1,7 +1,7 @@
 #include "sdkconfig.h"
 #if CONFIG_BESHELL_SERIAL_I2S_USE_LEGACY
 
-#include "audio_stream.h"
+#include "audio_pipeline.h"
 #include "driver/i2s.h"
 #include <beshell/qjs_utils.h>
 

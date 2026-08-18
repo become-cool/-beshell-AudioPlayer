@@ -1,4 +1,4 @@
-#include "audio_stream.h"
+#include "audio_pipeline.h"
 
 #define BUFF_SRC_SIZE       MAINBUF_SIZE/2
 #define BUFF_SRC_MEMTYPE    MALLOC_CAP_DMA

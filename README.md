@@ -45,7 +45,7 @@ dependencies:
 * 关闭（默认）：使用 ESP-IDF 新版 I2S 驱动（`driver/i2s_std.h`），播放前需先通过 `serial.i2sX.setup()` 创建 I2S 通道
 * 开启：使用旧版 I2S 驱动（`driver/i2s.h`）
 
-两种实现分别位于 `src/beshell/media/stream/el_i2s.c` 和 `el_i2s_legacy.c`，对外 API 不变。
+两种实现分别位于 `src/beshell/media/pipeline/el_i2s.c` 和 `el_i2s_legacy.c`，对外 API 不变。
 
 ## JS API
 

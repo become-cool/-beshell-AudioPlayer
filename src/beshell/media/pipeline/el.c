@@ -1,4 +1,4 @@
-#include "audio_stream.h"
+#include "audio_pipeline.h"
 #include <beshell/qjs_utils.h>
 
 inline void audio_el_set_stat(audio_el_t * el, EventBits_t stat) {

@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.24)
 
 # 源码目录
 file(GLOB_RECURSE src_beshell_ap
-        src/beshell/media/stream/*.c
+        src/beshell/media/pipeline/*.c
         src/beshell/media/*.cpp
     )
 
