@@ -47,9 +47,9 @@ async function main() {
         player.playMP3(mp3data)
         console.log("播放停止, 是否完整播放:", !!await waitStop())
 
-        console.log("播放 /test.wav ...")
-        player.playWAV("/test.wav")
-        console.log("播放停止, 是否完整播放:", !!await waitStop())
+        // console.log("播放 /test.wav ...")
+        // player.playWAV("/test.wav")
+        // console.log("播放停止, 是否完整播放:", !!await waitStop())
 
         console.log("全部播放结束")
 
