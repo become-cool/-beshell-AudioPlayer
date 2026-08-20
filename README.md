@@ -71,9 +71,9 @@ player.playMP3("/mp3/music.mp3")
 
 | 方法 | 说明 |
 |------|------|
-| `playMP3(path, sync=false)` | 播放 MP3 文件，`sync=true` 时阻塞直到播放结束 |
-| `playWAV(path)` | 播放 WAV 文件（采样率/位宽/声道从文件头解析） |
-| `playPCM(path, sampleRate=16000, bits=16, channels=1)` | 播放裸 PCM 文件（无文件头，格式由参数指定） |
+| `playMP3(source, sync=false)` | 播放 MP3，`sync=true` 时阻塞直到播放结束 |
+| `playWAV(source)` | 播放 WAV（采样率/位宽/声道从文件头解析） |
+| `playPCM(source, sampleRate=16000, bits=16, channels=1)` | 播放裸 PCM（无文件头，格式由参数指定） |
 | `pause()` | 暂停播放 |
 | `resume()` | 恢复播放 |
 | `stop(sync=false)` | 停止播放，`sync=true` 时阻塞直到停止完成 |
@@ -81,6 +81,22 @@ player.playMP3("/mp3/music.mp3")
 | `isPaused()` | 是否处于暂停状态 |
 | `setVolume(vol)` | 设置音量，取值 0-100 |
 | `printStats()` | 打印音频管道中各节点的运行状态（调试用） |
+
+### 输入来源
+
+三个 play 方法的 `source` 参数均支持两种类型：
+
+- **文件路径**（string）：VFS 路径，如 `/test1.mp3`
+- **ArrayBuffer**：内存中的完整音频数据，如 `fs.readFileSync()` 的返回值：
+
+```js
+import * as fs from "fs"
+
+const data = fs.readFileSync("/test2.mp3")   // 返回 ArrayBuffer
+player.playMP3(data)
+```
+
+播放期间播放器内部持有该 ArrayBuffer 的引用，防止被 GC 回收；播放结束后自动释放，无需手动管理。
 
 ### 事件
 

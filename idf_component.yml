@@ -1,5 +1,5 @@
 name: "beshell-AudioPlayer"
-version: "1.0.0"
+version: "1.0.1"
 description: "Beshell Audio Player is a lightweight audio player component for the Beshell framework."
 keywords:
   - "JavaScript"
@@ -13,7 +13,7 @@ authors:
 homepage: "https://beshell.become.cool"
 url: "https://beshell.become.cool"
 repository: "https://github.com/become-cool/-beshell-AudioPlayer.git"
-license: "LGPL"
+license: "LGPL-2.1-only"
 dependencies:
   "become-cool/beshell":
     version: ">=1.0.21"
